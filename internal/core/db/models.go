@@ -13,7 +13,7 @@ type Project struct {
 	UserID      int64
 	Project     string
 	Description sql.NullString
-	Status      sql.NullString
+	Status      string
 }
 
 type Session struct {
@@ -31,7 +31,7 @@ type Task struct {
 	Task        string
 	Description sql.NullString
 	Status      string
-	Priority    sql.NullInt64
+	Priority    string
 }
 
 type User struct {

@@ -61,7 +61,7 @@ INSERT INTO projects (project, description, status) VALUES (?, ?, ?) RETURNING i
 type InsertProjectsByUserAndProjectParams struct {
 	Project     string
 	Description sql.NullString
-	Status      sql.NullString
+	Status      string
 }
 
 func (q *Queries) InsertProjectsByUserAndProject(ctx context.Context, arg InsertProjectsByUserAndProjectParams) (Project, error) {
@@ -117,7 +117,7 @@ UPDATE projects SET project = ?, description = ?, status = ? WHERE id = ? AND us
 type UpdateProjectsByUserAndProjectParams struct {
 	Project     string
 	Description sql.NullString
-	Status      sql.NullString
+	Status      string
 	ID          int64
 	UserID      int64
 }

@@ -29,7 +29,11 @@ func LoadConfig(l *Logger) (*Config, error) {
 	}
 	var cfg Config
 
-	flag.StringVar(&cfg.Addr, "addr", os.Getenv("TRAMES_ADDR"), "Address")
+	addr := os.Getenv("TRAMES_ADDR")
+	if addr == "" {
+		addr = ":4040"
+	}
+	flag.StringVar(&cfg.Addr, "addr", addr, "Address")
 	sessionDuration, err := time.ParseDuration(os.Getenv("SESSION_EXPIRATION"))
 	if err != nil {
 		return nil, err

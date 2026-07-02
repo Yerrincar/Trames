@@ -5,8 +5,8 @@ CREATE TABLE tasks (
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     task TEXT NOT NULL,
     description TEXT,
-    status TEXT NOT NULL,
-    priority INTEGER
+    status TEXT NOT NULL DEFAULT 'TO-DO' CHECK (status IN ('EXPERIMENTAL', 'TO-DO', 'IN PROGRESS', 'BLOCKED', 'TEST', 'DONE')),
+    priority TEXT NOT NULL DEFAULT 'LOW' CHECK (priority IN ('IDEA','LOW', 'MEDIUM', 'HIGH', 'CRITICAL'))
 );
 
 CREATE TABLE projects (
@@ -14,7 +14,7 @@ CREATE TABLE projects (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     project TEXT NOT NULL,
     description TEXT,
-    status TEXT
+    status TEXT NOT NULL DEFAULT 'TO BE STARTED' CHECK (status IN('IDEA', 'TO BE STARTED', 'PLANNING', 'IN PROGRESS', 'DONE'))
 );
 
 CREATE TABLE users (

@@ -57,18 +57,22 @@ func (q *Queries) DeleteTask(ctx context.Context, ids []int64) ([]Task, error) {
 }
 
 const insertTasksByUserAndProject = `-- name: InsertTasksByUserAndProject :one
-INSERT INTO tasks (task, description, status, priority) VALUES (?, ?, ?, ?) RETURNING id, user_id, project_id, task, description, status, priority
+INSERT INTO tasks (user_id, project_id, task, description, status, priority) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, user_id, project_id, task, description, status, priority
 `
 
 type InsertTasksByUserAndProjectParams struct {
+	UserID      int64
+	ProjectID   int64
 	Task        string
 	Description sql.NullString
 	Status      string
-	Priority    sql.NullInt64
+	Priority    string
 }
 
 func (q *Queries) InsertTasksByUserAndProject(ctx context.Context, arg InsertTasksByUserAndProjectParams) (Task, error) {
 	row := q.db.QueryRowContext(ctx, insertTasksByUserAndProject,
+		arg.UserID,
+		arg.ProjectID,
 		arg.Task,
 		arg.Description,
 		arg.Status,
@@ -135,7 +139,7 @@ type UpdateTasksByUserAndProjectParams struct {
 	Task        string
 	Description sql.NullString
 	Status      string
-	Priority    sql.NullInt64
+	Priority    string
 	ID          int64
 	UserID      int64
 }

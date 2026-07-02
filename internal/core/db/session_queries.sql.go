@@ -33,7 +33,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 }
 
 const deleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
-DELETE FROM sessions WHERE expires_at < NOW()
+DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP
 `
 
 func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
@@ -60,7 +60,7 @@ func (q *Queries) DeleteSessionsByUserID(ctx context.Context, userID int64) erro
 }
 
 const findSessionByTokenHash = `-- name: FindSessionByTokenHash :one
-SELECT id, user_id, token_hash, created_at, expires_at FROM sessions WHERE token_hash = ? AND expires_at > NOW()
+SELECT id, user_id, token_hash, created_at, expires_at FROM sessions WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
 `
 
 func (q *Queries) FindSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error) {
