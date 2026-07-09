@@ -1,4 +1,4 @@
-package tasks
+package operations
 
 import (
 	"Trames/internal/core/db"
@@ -17,8 +17,10 @@ type Handler struct {
 	Logger  Logger
 }
 
-type TaskForm struct {
-	Task        string
+type OperationForm struct {
+	ID          int64
+	Operation   string
+	SubProject  string
 	Description sql.NullString
 	Status      string
 	Priority    string

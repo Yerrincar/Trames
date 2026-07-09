@@ -24,14 +24,24 @@ type Session struct {
 	ExpiresAt string
 }
 
-type Task struct {
+type SubProject struct {
 	ID          int64
 	UserID      int64
 	ProjectID   int64
-	Task        string
+	SubProject  string
 	Description sql.NullString
 	Status      string
-	Priority    string
+}
+
+type Task struct {
+	ID           int64
+	UserID       int64
+	ProjectID    int64
+	SubProjectID interface{}
+	Task         string
+	Description  sql.NullString
+	Status       string
+	Priority     string
 }
 
 type User struct {

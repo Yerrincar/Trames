@@ -1,7 +1,7 @@
 package config
 
 import (
-	"Trames/internal/core/tasks"
+	"Trames/internal/core/operations"
 	"Trames/internal/core/users"
 	"context"
 	"encoding/json"
@@ -17,7 +17,7 @@ import (
 
 type App struct {
 	UserHandler *users.UserHandle
-	Handler     *tasks.Handler
+	Handler     *operations.Handler
 	Wg          *sync.WaitGroup
 }
 
@@ -79,11 +79,16 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("GET /", a.handleAuthPage)
 	mux.HandleFunc("GET /healthz", a.handleHealth)
 	mux.HandleFunc("GET /users/currentUser", a.UserHandler.CurrentUser)
+	mux.HandleFunc("GET /tasks", a.Handler.DisplayTasks)
+	mux.HandleFunc("GET /projects", a.Handler.DisplayProjects)
+	mux.HandleFunc("GET /sub_projects", a.Handler.DisplaySubProjects)
 	//POST
 	mux.HandleFunc("POST /users/register", a.UserHandler.Register)
 	mux.HandleFunc("POST /users/login", a.UserHandler.LoginUser)
 	mux.HandleFunc("POST /users/logout", a.UserHandler.Logout)
 	mux.HandleFunc("POST /tasks/create", a.Handler.CreateTasks)
+	mux.HandleFunc("POST /projects/create", a.Handler.CreateProject)
+	mux.HandleFunc("POST /sub_projects/create", a.Handler.CreateSubProject)
 	//PUT
 
 	return logRequests(mux)

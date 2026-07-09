@@ -55,17 +55,23 @@ func (q *Queries) DeleteProjects(ctx context.Context, ids []int64) ([]Project, e
 }
 
 const insertProjectsByUserAndProject = `-- name: InsertProjectsByUserAndProject :one
-INSERT INTO projects (project, description, status) VALUES (?, ?, ?) RETURNING id, user_id, project, description, status
+INSERT INTO projects (user_id, project, description, status) VALUES (?, ?, ?, ?) RETURNING id, user_id, project, description, status
 `
 
 type InsertProjectsByUserAndProjectParams struct {
+	UserID      int64
 	Project     string
 	Description sql.NullString
 	Status      string
 }
 
 func (q *Queries) InsertProjectsByUserAndProject(ctx context.Context, arg InsertProjectsByUserAndProjectParams) (Project, error) {
-	row := q.db.QueryRowContext(ctx, insertProjectsByUserAndProject, arg.Project, arg.Description, arg.Status)
+	row := q.db.QueryRowContext(ctx, insertProjectsByUserAndProject,
+		arg.UserID,
+		arg.Project,
+		arg.Description,
+		arg.Status,
+	)
 	var i Project
 	err := row.Scan(
 		&i.ID,
@@ -108,6 +114,28 @@ func (q *Queries) SelectProjectsByUserAndProject(ctx context.Context, userID int
 		return nil, err
 	}
 	return items, nil
+}
+
+const selectProjectsByUserAndProjectId = `-- name: SelectProjectsByUserAndProjectId :one
+SELECT id, user_id, project, description, status FROM projects WHERE user_id = ? AND id = ?
+`
+
+type SelectProjectsByUserAndProjectIdParams struct {
+	UserID int64
+	ID     int64
+}
+
+func (q *Queries) SelectProjectsByUserAndProjectId(ctx context.Context, arg SelectProjectsByUserAndProjectIdParams) (Project, error) {
+	row := q.db.QueryRowContext(ctx, selectProjectsByUserAndProjectId, arg.UserID, arg.ID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Project,
+		&i.Description,
+		&i.Status,
+	)
+	return i, err
 }
 
 const updateProjectsByUserAndProject = `-- name: UpdateProjectsByUserAndProject :exec

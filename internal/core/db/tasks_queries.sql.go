@@ -12,7 +12,7 @@ import (
 )
 
 const deleteTask = `-- name: DeleteTask :many
-DELETE FROM tasks WHERE id IN (/*SLICE:ids*/?) RETURNING id, user_id, project_id, task, description, status, priority
+DELETE FROM tasks WHERE id IN (/*SLICE:ids*/?) RETURNING id, user_id, project_id, sub_project_id, task, description, status, priority
 `
 
 func (q *Queries) DeleteTask(ctx context.Context, ids []int64) ([]Task, error) {
@@ -38,6 +38,7 @@ func (q *Queries) DeleteTask(ctx context.Context, ids []int64) ([]Task, error) {
 			&i.ID,
 			&i.UserID,
 			&i.ProjectID,
+			&i.SubProjectID,
 			&i.Task,
 			&i.Description,
 			&i.Status,
@@ -57,7 +58,7 @@ func (q *Queries) DeleteTask(ctx context.Context, ids []int64) ([]Task, error) {
 }
 
 const insertTasksByUserAndProject = `-- name: InsertTasksByUserAndProject :one
-INSERT INTO tasks (user_id, project_id, task, description, status, priority) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, user_id, project_id, task, description, status, priority
+INSERT INTO tasks (user_id, sub_project_id, project_id, task, description, status, priority) VALUES (?, NULL, ?, ?, ?, ?, ?) RETURNING id, user_id, project_id, sub_project_id, task, description, status, priority
 `
 
 type InsertTasksByUserAndProjectParams struct {
@@ -83,6 +84,45 @@ func (q *Queries) InsertTasksByUserAndProject(ctx context.Context, arg InsertTas
 		&i.ID,
 		&i.UserID,
 		&i.ProjectID,
+		&i.SubProjectID,
+		&i.Task,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+	)
+	return i, err
+}
+
+const insertTasksByUserProjectAndSubProject = `-- name: InsertTasksByUserProjectAndSubProject :one
+INSERT INTO tasks (user_id, sub_project_id, project_id, task, description, status, priority) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, user_id, project_id, sub_project_id, task, description, status, priority
+`
+
+type InsertTasksByUserProjectAndSubProjectParams struct {
+	UserID       int64
+	SubProjectID interface{}
+	ProjectID    int64
+	Task         string
+	Description  sql.NullString
+	Status       string
+	Priority     string
+}
+
+func (q *Queries) InsertTasksByUserProjectAndSubProject(ctx context.Context, arg InsertTasksByUserProjectAndSubProjectParams) (Task, error) {
+	row := q.db.QueryRowContext(ctx, insertTasksByUserProjectAndSubProject,
+		arg.UserID,
+		arg.SubProjectID,
+		arg.ProjectID,
+		arg.Task,
+		arg.Description,
+		arg.Status,
+		arg.Priority,
+	)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.SubProjectID,
 		&i.Task,
 		&i.Description,
 		&i.Status,
@@ -92,7 +132,23 @@ func (q *Queries) InsertTasksByUserAndProject(ctx context.Context, arg InsertTas
 }
 
 const selectTasksByUserAndProject = `-- name: SelectTasksByUserAndProject :many
-SELECT id, user_id, project_id, task, description, status, priority FROM tasks WHERE user_id = ? AND project_id = ?
+SELECT
+    tasks.id,
+    tasks.task,
+    tasks.description,
+    tasks.status,
+    tasks.priority,
+    tasks.project_id,
+    tasks.sub_project_id,
+    sub_projects.sub_project
+FROM tasks
+LEFT JOIN sub_projects
+    ON sub_projects.id = tasks.sub_project_id
+   AND sub_projects.user_id = tasks.user_id
+   AND sub_projects.project_id = tasks.project_id
+WHERE tasks.user_id = ?
+  AND tasks.project_id = ?
+ORDER BY tasks.id DESC
 `
 
 type SelectTasksByUserAndProjectParams struct {
@@ -100,23 +156,105 @@ type SelectTasksByUserAndProjectParams struct {
 	ProjectID int64
 }
 
-func (q *Queries) SelectTasksByUserAndProject(ctx context.Context, arg SelectTasksByUserAndProjectParams) ([]Task, error) {
+type SelectTasksByUserAndProjectRow struct {
+	ID           int64
+	Task         string
+	Description  sql.NullString
+	Status       string
+	Priority     string
+	ProjectID    int64
+	SubProjectID interface{}
+	SubProject   sql.NullString
+}
+
+func (q *Queries) SelectTasksByUserAndProject(ctx context.Context, arg SelectTasksByUserAndProjectParams) ([]SelectTasksByUserAndProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, selectTasksByUserAndProject, arg.UserID, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Task
+	var items []SelectTasksByUserAndProjectRow
 	for rows.Next() {
-		var i Task
+		var i SelectTasksByUserAndProjectRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
-			&i.ProjectID,
 			&i.Task,
 			&i.Description,
 			&i.Status,
 			&i.Priority,
+			&i.ProjectID,
+			&i.SubProjectID,
+			&i.SubProject,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const selectTasksByUserAndProjectAndSubProject = `-- name: SelectTasksByUserAndProjectAndSubProject :many
+SELECT
+    tasks.id,
+    tasks.task,
+    tasks.description,
+    tasks.status,
+    tasks.priority,
+    tasks.project_id,
+    tasks.sub_project_id,
+    sub_projects.sub_project
+FROM tasks
+LEFT JOIN sub_projects
+    ON sub_projects.id = tasks.sub_project_id
+   AND sub_projects.user_id = tasks.user_id
+   AND sub_projects.project_id = tasks.project_id
+WHERE tasks.user_id = ?
+  AND tasks.project_id = ?
+  AND tasks.sub_project_id = ?
+ORDER BY tasks.id DESC
+`
+
+type SelectTasksByUserAndProjectAndSubProjectParams struct {
+	UserID       int64
+	ProjectID    int64
+	SubProjectID interface{}
+}
+
+type SelectTasksByUserAndProjectAndSubProjectRow struct {
+	ID           int64
+	Task         string
+	Description  sql.NullString
+	Status       string
+	Priority     string
+	ProjectID    int64
+	SubProjectID interface{}
+	SubProject   sql.NullString
+}
+
+func (q *Queries) SelectTasksByUserAndProjectAndSubProject(ctx context.Context, arg SelectTasksByUserAndProjectAndSubProjectParams) ([]SelectTasksByUserAndProjectAndSubProjectRow, error) {
+	rows, err := q.db.QueryContext(ctx, selectTasksByUserAndProjectAndSubProject, arg.UserID, arg.ProjectID, arg.SubProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectTasksByUserAndProjectAndSubProjectRow
+	for rows.Next() {
+		var i SelectTasksByUserAndProjectAndSubProjectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Task,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.ProjectID,
+			&i.SubProjectID,
+			&i.SubProject,
 		); err != nil {
 			return nil, err
 		}
