@@ -10,5 +10,8 @@ INSERT INTO projects (user_id, project, description, status) VALUES (?, ?, ?, ?)
 -- name: UpdateProjectsByUserAndProject :exec
 UPDATE projects SET project = ?, description = ?, status = ? WHERE id = ? AND user_id = ?;
 
--- name: DeleteProjects :many
-DELETE FROM projects WHERE id IN (sqlc.slice('ids')) RETURNING *;
+-- name: SelectIdByProject :one
+SELECT id FROM projects WHERE user_id = ? AND project = ?;
+
+-- name: DeleteProjects :one
+DELETE FROM projects WHERE id = ? AND user_id = ? RETURNING *;

@@ -8,53 +8,38 @@ package db
 import (
 	"context"
 	"database/sql"
-	"strings"
 )
 
-const deleteTask = `-- name: DeleteTask :many
-DELETE FROM tasks WHERE id IN (/*SLICE:ids*/?) RETURNING id, user_id, project_id, sub_project_id, task, description, status, priority
+const deleteTask = `-- name: DeleteTask :one
+DELETE FROM tasks WHERE user_id = ? AND id = ? AND sub_project_id IS ? AND project_id = ? RETURNING id, user_id, project_id, sub_project_id, task, description, status, priority
 `
 
-func (q *Queries) DeleteTask(ctx context.Context, ids []int64) ([]Task, error) {
-	query := deleteTask
-	var queryParams []interface{}
-	if len(ids) > 0 {
-		for _, v := range ids {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
-	}
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Task
-	for rows.Next() {
-		var i Task
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.ProjectID,
-			&i.SubProjectID,
-			&i.Task,
-			&i.Description,
-			&i.Status,
-			&i.Priority,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type DeleteTaskParams struct {
+	UserID       int64
+	ID           int64
+	SubProjectID interface{}
+	ProjectID    int64
+}
+
+func (q *Queries) DeleteTask(ctx context.Context, arg DeleteTaskParams) (Task, error) {
+	row := q.db.QueryRowContext(ctx, deleteTask,
+		arg.UserID,
+		arg.ID,
+		arg.SubProjectID,
+		arg.ProjectID,
+	)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.SubProjectID,
+		&i.Task,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+	)
+	return i, err
 }
 
 const insertTasksByUserAndProject = `-- name: InsertTasksByUserAndProject :one
@@ -129,6 +114,29 @@ func (q *Queries) InsertTasksByUserProjectAndSubProject(ctx context.Context, arg
 		&i.Priority,
 	)
 	return i, err
+}
+
+const selectIdByTask = `-- name: SelectIdByTask :one
+SELECT  id FROM tasks WHERE user_id = ? AND task = ? AND sub_project_id = ? AND project_id = ?
+`
+
+type SelectIdByTaskParams struct {
+	UserID       int64
+	Task         string
+	SubProjectID interface{}
+	ProjectID    int64
+}
+
+func (q *Queries) SelectIdByTask(ctx context.Context, arg SelectIdByTaskParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, selectIdByTask,
+		arg.UserID,
+		arg.Task,
+		arg.SubProjectID,
+		arg.ProjectID,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const selectTasksByUserAndProject = `-- name: SelectTasksByUserAndProject :many

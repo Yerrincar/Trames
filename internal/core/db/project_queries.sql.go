@@ -8,50 +8,28 @@ package db
 import (
 	"context"
 	"database/sql"
-	"strings"
 )
 
-const deleteProjects = `-- name: DeleteProjects :many
-DELETE FROM projects WHERE id IN (/*SLICE:ids*/?) RETURNING id, user_id, project, description, status
+const deleteProjects = `-- name: DeleteProjects :one
+DELETE FROM projects WHERE id = ? AND user_id = ? RETURNING id, user_id, project, description, status
 `
 
-func (q *Queries) DeleteProjects(ctx context.Context, ids []int64) ([]Project, error) {
-	query := deleteProjects
-	var queryParams []interface{}
-	if len(ids) > 0 {
-		for _, v := range ids {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
-	}
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Project
-	for rows.Next() {
-		var i Project
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Project,
-			&i.Description,
-			&i.Status,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type DeleteProjectsParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) DeleteProjects(ctx context.Context, arg DeleteProjectsParams) (Project, error) {
+	row := q.db.QueryRowContext(ctx, deleteProjects, arg.ID, arg.UserID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Project,
+		&i.Description,
+		&i.Status,
+	)
+	return i, err
 }
 
 const insertProjectsByUserAndProject = `-- name: InsertProjectsByUserAndProject :one
@@ -81,6 +59,22 @@ func (q *Queries) InsertProjectsByUserAndProject(ctx context.Context, arg Insert
 		&i.Status,
 	)
 	return i, err
+}
+
+const selectIdByProject = `-- name: SelectIdByProject :one
+SELECT id FROM projects WHERE user_id = ? AND project = ?
+`
+
+type SelectIdByProjectParams struct {
+	UserID  int64
+	Project string
+}
+
+func (q *Queries) SelectIdByProject(ctx context.Context, arg SelectIdByProjectParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, selectIdByProject, arg.UserID, arg.Project)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const selectProjectsByUserAndProject = `-- name: SelectProjectsByUserAndProject :many

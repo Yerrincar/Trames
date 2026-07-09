@@ -46,5 +46,8 @@ INSERT INTO tasks (user_id, sub_project_id, project_id, task, description, statu
 -- name: UpdateTasksByUserAndProject :exec
 UPDATE tasks SET task = ?, description = ?, status = ?, priority = ? WHERE id = ? AND user_id = ?;
 
--- name: DeleteTask :many
-DELETE FROM tasks WHERE id IN (sqlc.slice('ids')) RETURNING *;
+-- name: SelectIdByTask :one
+SELECT  id FROM tasks WHERE user_id = ? AND task = ? AND sub_project_id = ? AND project_id = ?;
+
+-- name: DeleteTask :one
+DELETE FROM tasks WHERE user_id = ? AND id = ? AND sub_project_id IS ? AND project_id = ? RETURNING *;

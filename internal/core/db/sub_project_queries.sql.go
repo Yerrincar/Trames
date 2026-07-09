@@ -8,51 +8,30 @@ package db
 import (
 	"context"
 	"database/sql"
-	"strings"
 )
 
-const deleteSubProjects = `-- name: DeleteSubProjects :many
-DELETE FROM sub_projects WHERE id IN (/*SLICE:ids*/?) RETURNING id, user_id, project_id, sub_project, description, status
+const deleteSubProjects = `-- name: DeleteSubProjects :one
+DELETE FROM sub_projects WHERE user_id = ? AND id = ? AND project_id = ? RETURNING id, user_id, project_id, sub_project, description, status
 `
 
-func (q *Queries) DeleteSubProjects(ctx context.Context, ids []int64) ([]SubProject, error) {
-	query := deleteSubProjects
-	var queryParams []interface{}
-	if len(ids) > 0 {
-		for _, v := range ids {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
-	}
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []SubProject
-	for rows.Next() {
-		var i SubProject
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.ProjectID,
-			&i.SubProject,
-			&i.Description,
-			&i.Status,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type DeleteSubProjectsParams struct {
+	UserID    int64
+	ID        int64
+	ProjectID int64
+}
+
+func (q *Queries) DeleteSubProjects(ctx context.Context, arg DeleteSubProjectsParams) (SubProject, error) {
+	row := q.db.QueryRowContext(ctx, deleteSubProjects, arg.UserID, arg.ID, arg.ProjectID)
+	var i SubProject
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.SubProject,
+		&i.Description,
+		&i.Status,
+	)
+	return i, err
 }
 
 const insertSubProject = `-- name: InsertSubProject :one
