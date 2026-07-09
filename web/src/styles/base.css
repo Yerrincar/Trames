@@ -1,0 +1,80 @@
+:root {
+  color: #d7d7d7;
+  background: #030303;
+  font-family: "Times New Roman", Times, serif;
+  font-weight: 300;
+  --bg: #030303;
+  --panel: #080808;
+  --panel-2: #101010;
+  --panel-3: #151515;
+  --line: #242424;
+  --line-soft: #171717;
+  --text: #d7d7d7;
+  --muted: #858585;
+  --faint: #565656;
+  --bright: #f2f2f2;
+  --danger: #c96464;
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+button:hover:not(:disabled),
+a:hover {
+  color: var(--bright);
+  border-color: #3a3a3a;
+  background: #141414;
+}
+
+svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 1.15;
+}

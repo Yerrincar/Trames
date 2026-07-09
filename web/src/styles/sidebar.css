@@ -1,0 +1,139 @@
+.project-tree {
+  min-height: 0;
+  overflow: auto;
+  padding: 0.7rem 0.45rem;
+}
+
+.tree-title {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0.45rem 0.65rem;
+}
+
+.tree-empty {
+  margin: 0.4rem 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.tree-group,
+.sub-tree {
+  display: grid;
+}
+
+.tree-row {
+  display: grid;
+  grid-template-columns: 1rem 1rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 1.45rem;
+  padding: 0.14rem 0.4rem;
+  border: 0;
+  color: var(--muted);
+  text-align: left;
+}
+
+.tree-row:hover,
+.tree-row.active {
+  background: #141414;
+  color: var(--text);
+}
+
+.project-row {
+  color: #b9b9b9;
+}
+
+.subproject-row {
+  grid-template-columns: 1rem 0.65rem minmax(0, 1fr) auto;
+  padding-left: 0.65rem;
+}
+
+.task-row {
+  grid-template-columns: 1rem 0.55rem minmax(0, 1fr) auto;
+  color: #777;
+  font-size: 0.88rem;
+}
+
+.task-row.nested {
+  padding-left: 0.95rem;
+}
+
+.tree-children {
+  display: grid;
+  margin-left: 0.5rem;
+  border-left: 1px solid #191919;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.disclosure {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+}
+
+.disclosure svg {
+  width: 0.65rem;
+  height: 0.65rem;
+  transition: transform 120ms ease;
+}
+
+.disclosure.open svg {
+  transform: rotate(90deg);
+}
+
+.project-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.tree-indent,
+.tree-indent.deep {
+  display: block;
+}
+
+.tree-indent.deep {
+  width: 1.35rem;
+}
+
+.branch-line {
+  display: block;
+  width: 0.55rem;
+  height: 1px;
+  background: var(--faint);
+}
+
+.task-marker {
+  width: 0.25rem;
+  height: 0.25rem;
+  border: 1px solid var(--faint);
+}
+
+.left-footer {
+  padding: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+
+.logout-button,
+.submit-button,
+.auth-links a,
+.landing-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1rem;
+  padding: 0.45rem 0.75rem;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+
+.logout-button {
+  width: 100%;
+  color: #a7a7a7;
+}

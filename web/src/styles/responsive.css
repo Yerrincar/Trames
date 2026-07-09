@@ -1,0 +1,49 @@
+@media (width <= 1100px) {
+  .workspace-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+}
+
+@media (width <= 780px) {
+  .app-root.authenticated {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .workspace-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .left-panel {
+    height: auto;
+    min-height: auto;
+    max-height: 45vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .center-panel {
+    height: auto;
+    min-height: 55vh;
+    overflow: visible;
+  }
+
+  .project-tree {
+    max-height: 45vh;
+  }
+
+  .project-stats,
+  .detail-grid,
+  .dashboard-grid,
+  .form-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop {
+    place-items: stretch;
+  }
+}

@@ -1,0 +1,125 @@
+.context-menu {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  min-width: 12rem;
+  border: 1px solid #343434;
+  background: #070707;
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 0.55);
+}
+
+.context-menu button {
+  justify-content: flex-start;
+  min-height: 2rem;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+}
+
+.context-menu button:last-child {
+  border-bottom: 0;
+}
+
+.context-menu .danger {
+  color: var(--danger);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.74);
+}
+
+.modal-window {
+  width: min(100%, 520px);
+  border: 1px solid #393939;
+  background: #070707;
+  box-shadow: 0 2rem 4rem rgb(0 0 0 / 0.6);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--bright);
+  font-weight: 300;
+  font-size: 1.65rem;
+  letter-spacing: -0.03em;
+}
+
+.operation-form,
+.auth-box {
+  display: grid;
+  gap: 1rem;
+}
+
+.operation-form {
+  padding: 1.2rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  color: #bdbdbd;
+  font-size: 0.95rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #303030;
+  background: #030303;
+  color: var(--text);
+  padding: 0.65rem 0.75rem;
+  outline: 0;
+}
+
+textarea {
+  resize: vertical;
+}
+
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #8c8c8c 50%), linear-gradient(135deg, #8c8c8c 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px;
+  padding-right: 2rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #777;
+}
+
+.form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.submit-button {
+  width: 100%;
+  margin-top: 0.2rem;
+  background: #eeeeee;
+  color: #030303;
+  border-color: #eeeeee;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #cfcfcf;
+  color: #030303;
+}

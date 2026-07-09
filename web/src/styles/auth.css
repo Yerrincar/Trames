@@ -1,0 +1,56 @@
+.landing-screen,
+.auth-screen {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(255 255 255 / 0.06), transparent 18rem),
+    var(--bg);
+}
+
+.landing-screen {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1.4rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.landing-actions,
+.auth-links {
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.landing-actions a,
+.auth-links a {
+  min-width: 7rem;
+  border: 1px solid var(--line);
+  color: #b8b8b8;
+}
+
+.auth-screen {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.auth-box {
+  width: min(100%, 420px);
+  padding: 1.35rem;
+  border: 1px solid #303030;
+  background: #060606;
+}
+
+.auth-message {
+  min-height: 1.1rem;
+  margin: 0;
+  color: #8a8a8a;
+  text-transform: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.auth-message.error {
+  color: #f0b3b3;
+}
