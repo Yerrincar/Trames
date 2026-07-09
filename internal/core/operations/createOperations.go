@@ -177,6 +177,203 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userId, status, err := h.SessionId(ctx, r)
+	if err != nil {
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+
+	projectId, err := strconv.Atoi(r.URL.Query().Get("projectId"))
+	if err != nil {
+		http.Error(w, "Error trying to parse projectId", http.StatusBadRequest)
+		return
+	}
+
+	input, err := parseForm(r, "project")
+	if err != nil {
+		http.Error(w, "Error trying to parse form input", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Queries.UpdateProjectsByUserAndProject(ctx, db.UpdateProjectsByUserAndProjectParams{
+		Project:     input.Operation,
+		Description: input.Description,
+		Status:      input.Status,
+		ID:          int64(projectId),
+		UserID:      userId,
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to update project in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to update project in the database", http.StatusBadRequest)
+		return
+	}
+
+	response, err := h.Queries.SelectProjectsByUserAndProjectId(ctx, db.SelectProjectsByUserAndProjectIdParams{
+		UserID: userId,
+		ID:     int64(projectId),
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to select updated project in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to select updated project in the database", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h *Handler) UpdateSubProject(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userId, status, err := h.SessionId(ctx, r)
+	if err != nil {
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+
+	projectId, err := strconv.Atoi(r.URL.Query().Get("projectId"))
+	if err != nil {
+		http.Error(w, "Error trying to parse projectId", http.StatusBadRequest)
+		return
+	}
+
+	subProjectId, err := strconv.Atoi(r.URL.Query().Get("subProjectId"))
+	if err != nil {
+		http.Error(w, "Error trying to parse subProjectId", http.StatusBadRequest)
+		return
+	}
+
+	input, err := parseForm(r, "project")
+	if err != nil {
+		http.Error(w, "Error trying to parse form input", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Queries.UpdateSubProjectsByUserAndProject(ctx, db.UpdateSubProjectsByUserAndProjectParams{
+		SubProject:  input.Operation,
+		Description: input.Description,
+		Status:      input.Status,
+		ID:          int64(subProjectId),
+		UserID:      userId,
+		ProjectID:   int64(projectId),
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to update sub-project in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to update sub-project in the database", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := h.Queries.SelectSubProjectsByUserAndProject(ctx, db.SelectSubProjectsByUserAndProjectParams{
+		UserID:    userId,
+		ProjectID: int64(projectId),
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to select updated sub-project in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to select updated sub-project in the database", http.StatusBadRequest)
+		return
+	}
+
+	for _, row := range rows {
+		if row.ID == int64(subProjectId) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(row)
+			return
+		}
+	}
+
+	http.Error(w, "No sub projects with that ID", http.StatusBadRequest)
+}
+
+func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userId, status, err := h.SessionId(ctx, r)
+	if err != nil {
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+
+	projectId, err := strconv.Atoi(r.URL.Query().Get("projectId"))
+	if err != nil {
+		http.Error(w, "Error trying to parse projectId", http.StatusBadRequest)
+		return
+	}
+
+	taskId, err := strconv.Atoi(r.URL.Query().Get("taskId"))
+	if err != nil {
+		http.Error(w, "Error trying to parse taskId", http.StatusBadRequest)
+		return
+	}
+
+	input, err := parseForm(r, "task")
+	if err != nil {
+		http.Error(w, "Error trying to parse form input", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := h.Queries.SelectTasksByUserAndProject(ctx, db.SelectTasksByUserAndProjectParams{
+		UserID:    userId,
+		ProjectID: int64(projectId),
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to select tasks by user in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to select tasks by user", http.StatusInternalServerError)
+		return
+	}
+
+	taskFound := false
+	for _, row := range rows {
+		if row.ID == int64(taskId) {
+			taskFound = true
+			break
+		}
+	}
+	if !taskFound {
+		http.Error(w, "No tasks with that ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.Queries.UpdateTasksByUserAndProject(ctx, db.UpdateTasksByUserAndProjectParams{
+		Task:        input.Operation,
+		Description: input.Description,
+		Status:      input.Status,
+		Priority:    input.Priority,
+		ID:          int64(taskId),
+		UserID:      userId,
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to update task in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to update task in the database", http.StatusBadRequest)
+		return
+	}
+
+	rows, err = h.Queries.SelectTasksByUserAndProject(ctx, db.SelectTasksByUserAndProjectParams{
+		UserID:    userId,
+		ProjectID: int64(projectId),
+	})
+	if err != nil {
+		h.Logger.Error("Error trying to select updated task in the database: "+err.Error(), nil)
+		http.Error(w, "Error trying to select updated task", http.StatusInternalServerError)
+		return
+	}
+
+	for _, row := range rows {
+		if row.ID == int64(taskId) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(row)
+			return
+		}
+	}
+
+	http.Error(w, "No tasks with that ID", http.StatusBadRequest)
+}
+
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

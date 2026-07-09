@@ -60,8 +60,13 @@ type ContextMenuState = {
 
 type OperationRow = Record<string, unknown>
 
+type EditableTarget =
+  | { type: 'project'; projectId: number; item: OperationItem }
+  | { type: 'subProject'; projectId: number; subProjectId: number; item: OperationItem }
+  | { type: 'task'; projectId: number; taskId: number; item: OperationItem }
+
 const projectStatusOptions = ['IDEA', 'TO BE STARTED', 'PLANNING', 'IN PROGRESS', 'DONE']
-const taskStatusOptions = ['EXPERIMENTAL', 'TO-DO', 'IN PROGRESS', 'BLOCKED', 'TEST', 'DONE']
+const taskStatusOptions = ['TO-DO', 'IN PROGRESS', 'BLOCKED', 'TEST', 'DONE']
 const priorityOptions = ['IDEA', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
 
 const user = ref<User | null>(null)
@@ -79,6 +84,13 @@ const expandedSubProjectKeys = ref<string[]>([])
 const selectedEntity = ref<SelectedEntity>(null)
 const modal = ref<ModalType>(null)
 const contextMenu = ref<ContextMenuState | null>(null)
+const editingDescription = ref(false)
+const editingStatus = ref(false)
+const editingPriority = ref(false)
+const descriptionDraft = ref('')
+const draggedTask = ref<OperationItem | null>(null)
+const activeDropStatus = ref('')
+const dashboardTaskFilter = ref('all')
 
 const projectForm = ref<OperationFormState>({ name: '', description: '', status: 'TO BE STARTED' })
 const subProjectForm = ref<ProjectBoundFormState>({ projectId: null, name: '', description: '', status: 'TO BE STARTED' })
@@ -138,6 +150,19 @@ const dashboardDescription = computed(() => {
   }
   return selectedProject.value?.description || 'No description yet.'
 })
+const projectDashboardFilterOptions = computed(() => {
+  if (!selectedProject.value) {
+    return []
+  }
+  return [
+    { value: 'all', label: 'All tasks' },
+    { value: 'project', label: 'Project tasks' },
+    ...detailsFor(selectedProject.value.id).subProjects.map((subProject) => ({
+      value: `subProject:${subProject.id}`,
+      label: subProject.name,
+    })),
+  ]
+})
 const dashboardTasks = computed(() => {
   const selection = selectedEntity.value
   if (!selection) {
@@ -148,6 +173,15 @@ const dashboardTasks = computed(() => {
     return subProject ? tasksForSubProject(selection.projectId, subProject.name) : []
   }
   if (selection.type === 'project') {
+    const filter = dashboardTaskFilter.value
+    if (filter === 'project') {
+      return directTasks(selection.projectId)
+    }
+    if (filter.startsWith('subProject:')) {
+      const subProjectId = Number(filter.replace('subProject:', ''))
+      const subProject = detailsFor(selection.projectId).subProjects.find((item) => item.id === subProjectId)
+      return subProject ? tasksForSubProject(selection.projectId, subProject.name) : []
+    }
     return detailsFor(selection.projectId).tasks
   }
   return []
@@ -166,6 +200,26 @@ const dashboardSubProjectCount = computed(() => {
   }
   return detailsFor(selection.projectId).subProjects.length
 })
+const editableTarget = computed<EditableTarget | null>(() => {
+  const selection = selectedEntity.value
+  if (!selection) {
+    return null
+  }
+  if (selection.type === 'project') {
+    const item = projects.value.find((project) => project.id === selection.projectId)
+    return item ? { type: 'project', projectId: selection.projectId, item } : null
+  }
+  if (selection.type === 'subProject') {
+    const item = detailsFor(selection.projectId).subProjects.find((subProject) => subProject.id === selection.subProjectId)
+    return item ? { type: 'subProject', projectId: selection.projectId, subProjectId: selection.subProjectId, item } : null
+  }
+  const item = detailsFor(selection.projectId).tasks.find((task) => task.id === selection.taskId)
+  return item ? { type: 'task', projectId: selection.projectId, taskId: selection.taskId, item } : null
+})
+const editableDescription = computed(() => editableTarget.value?.item.description || 'No description yet.')
+const editableStatus = computed(() => editableTarget.value?.item.status || '')
+const editablePriority = computed(() => editableTarget.value?.type === 'task' ? editableTarget.value.item.priority : '')
+const editableStatusOptions = computed(() => editableTarget.value?.type === 'task' ? taskStatusOptions : projectStatusOptions)
 const modalTitle = computed(() => {
   if (modal.value === 'project') {
     return 'Create Project'
@@ -461,6 +515,16 @@ function ensureSelectionEntity() {
   selectedEntity.value = null
 }
 
+function ensureDashboardTaskFilter() {
+  if (selectedEntity.value?.type !== 'project') {
+    return
+  }
+  const validFilter = projectDashboardFilterOptions.value.some((option) => option.value === dashboardTaskFilter.value)
+  if (!validFilter) {
+    dashboardTaskFilter.value = 'all'
+  }
+}
+
 async function loadOperations() {
   if (!user.value) {
     clearOperations()
@@ -494,6 +558,7 @@ async function loadOperations() {
     syncExpandedProjects()
     syncExpandedSubProjects()
     ensureSelectionEntity()
+    ensureDashboardTaskFilter()
 
     const taskCount = Object.values(projectDetails.value).reduce((total, detail) => total + detail.tasks.length, 0)
     setMessage(projects.value.length === 0 ? 'No projects yet.' : `${projects.value.length} projects / ${taskCount} tasks loaded.`)
@@ -730,6 +795,159 @@ async function deleteTask(projectId: number, taskId: number, name: string) {
   }
 }
 
+function resetInlineEditors() {
+  editingDescription.value = false
+  editingStatus.value = false
+  editingPriority.value = false
+  descriptionDraft.value = ''
+}
+
+function startDescriptionEdit() {
+  const target = editableTarget.value
+  if (!target) {
+    return
+  }
+  descriptionDraft.value = target.item.description
+  editingDescription.value = true
+}
+
+function cancelDescriptionEdit() {
+  editingDescription.value = false
+  descriptionDraft.value = ''
+}
+
+function eventValue(event: Event) {
+  return event.target instanceof HTMLSelectElement ? event.target.value : ''
+}
+
+async function updateEditableTarget(fields: Partial<Pick<OperationItem, 'description' | 'status' | 'priority'>>) {
+  const target = editableTarget.value
+  if (!target) {
+    setMessage('Select a project, sub-project, or task first.', 'error')
+    return
+  }
+
+  const next = { ...target.item, ...fields }
+  try {
+    if (target.type === 'project') {
+      await api(`/projects/update?projectId=${encodeURIComponent(String(target.projectId))}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody({ project: next.name, Description: next.description, Status: next.status }),
+      })
+    }
+
+    if (target.type === 'subProject') {
+      await api(
+        `/sub_projects/update?projectId=${encodeURIComponent(String(target.projectId))}&subProjectId=${encodeURIComponent(String(target.subProjectId))}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody({ project: next.name, Description: next.description, Status: next.status }),
+        },
+      )
+    }
+
+    if (target.type === 'task') {
+      await api(`/tasks/update?projectId=${encodeURIComponent(String(target.projectId))}&taskId=${encodeURIComponent(String(target.taskId))}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody({
+          task: next.name,
+          'Sub Project': next.subProject,
+          Description: next.description,
+          Status: next.status,
+          Priority: next.priority,
+        }),
+      })
+    }
+
+    resetInlineEditors()
+    await loadOperations()
+    setMessage('Operation updated.')
+  } catch (error) {
+    setError(error, 'Unable to update operation.')
+  }
+}
+
+async function saveDescriptionEdit() {
+  await updateEditableTarget({ description: descriptionDraft.value })
+}
+
+async function changeStatus(status: string) {
+  if (status === '') {
+    return
+  }
+  editingStatus.value = false
+  await updateEditableTarget({ status })
+}
+
+async function changePriority(priority: string) {
+  if (priority === '') {
+    return
+  }
+  editingPriority.value = false
+  await updateEditableTarget({ priority })
+}
+
+function startTaskDrag(event: DragEvent, task: OperationItem) {
+  draggedTask.value = task
+  activeDropStatus.value = ''
+  event.dataTransfer?.setData('text/plain', String(task.id))
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+function finishTaskDrag() {
+  draggedTask.value = null
+  activeDropStatus.value = ''
+}
+
+function allowStatusDrop(event: DragEvent, status: string) {
+  if (!draggedTask.value) {
+    return
+  }
+  event.preventDefault()
+  activeDropStatus.value = status
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function leaveStatusDrop(status: string) {
+  if (activeDropStatus.value === status) {
+    activeDropStatus.value = ''
+  }
+}
+
+async function dropTaskOnStatus(status: string) {
+  const task = draggedTask.value
+  const projectId = selectedProjectId.value
+  finishTaskDrag()
+  if (!task || projectId === null || task.status === status) {
+    return
+  }
+
+  try {
+    await api(`/tasks/update?projectId=${encodeURIComponent(String(projectId))}&taskId=${encodeURIComponent(String(task.id))}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody({
+        task: task.name,
+        'Sub Project': task.subProject,
+        Description: task.description,
+        Status: status,
+        Priority: task.priority,
+      }),
+    })
+    await loadOperations()
+    setMessage(`Task moved to ${status}.`)
+  } catch (error) {
+    setError(error, 'Unable to move task.')
+  }
+}
+
 function openProjectMenu(event: MouseEvent, project: OperationItem) {
   event.preventDefault()
   selectedProjectId.value = project.id
@@ -836,6 +1054,13 @@ watch(
     taskForm.value.subProject = ''
   },
 )
+
+watch(selectedEntity, (selection) => {
+  resetInlineEditors()
+  if (selection?.type === 'project') {
+    dashboardTaskFilter.value = 'all'
+  }
+})
 
 onMounted(() => {
   window.addEventListener('popstate', handlePopState)
@@ -979,7 +1204,16 @@ onUnmounted(() => {
           <section v-if="selectedTask && selectedTaskProject" class="project-focus task-detail">
             <p class="overline">Task detail</p>
             <h1>{{ selectedTask.name }}</h1>
-            <p class="project-description">{{ selectedTask.description || 'No description yet.' }}</p>
+            <div v-if="editingDescription" class="description-editor">
+              <textarea v-model="descriptionDraft" rows="6" @keydown.ctrl.enter.prevent="saveDescriptionEdit" />
+              <div class="inline-actions">
+                <button type="button" @click="saveDescriptionEdit">Save description</button>
+                <button type="button" @click="cancelDescriptionEdit">Cancel</button>
+              </div>
+            </div>
+            <p v-else class="project-description editable-description" title="Double-click to edit" @dblclick="startDescriptionEdit">
+              {{ editableDescription }}
+            </p>
 
             <div class="detail-grid" aria-label="Task information">
               <div>
@@ -992,11 +1226,17 @@ onUnmounted(() => {
               </div>
               <div>
                 <span>Status</span>
-                <strong>{{ selectedTask.status }}</strong>
+                <select v-if="editingStatus" class="inline-select" :value="editableStatus" @change="changeStatus(eventValue($event))" @blur="editingStatus = false">
+                  <option v-for="status in editableStatusOptions" :key="status" :value="status">{{ status }}</option>
+                </select>
+                <button v-else type="button" class="meta-edit-button" @click="editingStatus = true">{{ editableStatus }}</button>
               </div>
               <div>
                 <span>Priority</span>
-                <strong>{{ selectedTask.priority }}</strong>
+                <select v-if="editingPriority" class="inline-select" :value="editablePriority" @change="changePriority(eventValue($event))" @blur="editingPriority = false">
+                  <option v-for="priority in priorityOptions" :key="priority" :value="priority">{{ priority }}</option>
+                </select>
+                <button v-else type="button" class="meta-edit-button" @click="editingPriority = true">{{ editablePriority }}</button>
               </div>
               <div>
                 <span>ID</span>
@@ -1008,7 +1248,16 @@ onUnmounted(() => {
           <section v-else-if="selectedProject && selectedEntity" class="project-focus">
             <p class="overline">{{ selectedEntity.type === 'subProject' ? 'Sub-project dashboard' : 'Project dashboard' }}</p>
             <h1>{{ dashboardTitle }}</h1>
-            <p class="project-description">{{ dashboardDescription }}</p>
+            <div v-if="editingDescription" class="description-editor">
+              <textarea v-model="descriptionDraft" rows="6" @keydown.ctrl.enter.prevent="saveDescriptionEdit" />
+              <div class="inline-actions">
+                <button type="button" @click="saveDescriptionEdit">Save description</button>
+                <button type="button" @click="cancelDescriptionEdit">Cancel</button>
+              </div>
+            </div>
+            <p v-else class="project-description editable-description" title="Double-click to edit" @dblclick="startDescriptionEdit">
+              {{ dashboardDescription }}
+            </p>
 
             <div class="project-stats" aria-label="Dashboard stats">
               <div>
@@ -1020,30 +1269,59 @@ onUnmounted(() => {
                 <span>Tasks</span>
               </div>
               <div>
-                <strong>{{ selectedEntity.type === 'subProject' ? selectedSubProject?.status : selectedProject.status }}</strong>
+                <select v-if="editingStatus" class="inline-select" :value="editableStatus" @change="changeStatus(eventValue($event))" @blur="editingStatus = false">
+                  <option v-for="status in editableStatusOptions" :key="status" :value="status">{{ status }}</option>
+                </select>
+                <button v-else type="button" class="meta-edit-button" @click="editingStatus = true">{{ editableStatus }}</button>
                 <span>Status</span>
               </div>
             </div>
 
+            <div class="dashboard-toolbar">
+              <span>Status</span>
+              <label v-if="selectedEntity.type === 'project'">
+                Filter
+                <select v-model="dashboardTaskFilter">
+                  <option v-for="option in projectDashboardFilterOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+            </div>
+
             <section class="dashboard-grid" aria-label="Tasks by status">
-              <article v-for="group in dashboardGroups" :key="group.status" class="status-column">
+              <article
+                v-for="group in dashboardGroups"
+                :key="group.status"
+                class="status-column"
+                :class="{ 'drop-active': activeDropStatus === group.status }"
+                @dragover="allowStatusDrop($event, group.status)"
+                @dragleave="leaveStatusDrop(group.status)"
+                @drop.prevent="dropTaskOnStatus(group.status)"
+              >
                 <header>
                   <span>{{ group.status }}</span>
                   <span>{{ group.tasks.length }}</span>
                 </header>
                 <p v-if="group.tasks.length === 0" class="empty-center">No tasks.</p>
-                <button
+                <div
                   v-for="task in group.tasks"
                   :key="task.id"
-                  type="button"
+                  role="button"
+                  tabindex="0"
                   class="dashboard-task"
+                  draggable="true"
                   @click="selectedProjectId !== null && selectTask(selectedProjectId, task.id)"
+                  @keydown.enter="selectedProjectId !== null && selectTask(selectedProjectId, task.id)"
+                  @keydown.space.prevent="selectedProjectId !== null && selectTask(selectedProjectId, task.id)"
                   @contextmenu="selectedProjectId !== null && openTaskMenu($event, selectedProjectId, task)"
+                  @dragstart.stop="startTaskDrag($event, task)"
+                  @dragend="finishTaskDrag"
                 >
                   <span>{{ task.name }}</span>
                   <small>{{ task.subProject || 'Project' }}</small>
                   <strong>{{ task.priority }}</strong>
-                </button>
+                </div>
               </article>
             </section>
           </section>

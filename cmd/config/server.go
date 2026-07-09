@@ -90,6 +90,9 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /projects/create", a.Handler.CreateProject)
 	mux.HandleFunc("POST /sub_projects/create", a.Handler.CreateSubProject)
 	//PUT
+	mux.HandleFunc("PUT /tasks/update", a.Handler.UpdateTask)
+	mux.HandleFunc("PUT /projects/update", a.Handler.UpdateProject)
+	mux.HandleFunc("PUT /sub_projects/update", a.Handler.UpdateSubProject)
 	//DELETE
 	mux.HandleFunc("DELETE /tasks/delete", a.Handler.DeleteTask)
 	mux.HandleFunc("DELETE /projects/delete", a.Handler.DeleteProject)
