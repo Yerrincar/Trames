@@ -116,7 +116,7 @@ const {
               class="tree-row task-row nested"
               :class="{ active: selectedEntity?.type === 'task' && selectedEntity.taskId === task.id }"
               @click="selectTask(project.id, task.id)"
-              @contextmenu="openTaskMenu($event, project.id, task)"
+              @contextmenu.stop="openTaskMenu($event, project.id, task)"
             >
               <span class="tree-indent deep"></span>
               <span class="task-marker"></span>
@@ -132,7 +132,7 @@ const {
             class="tree-row task-row"
             :class="{ active: selectedEntity?.type === 'task' && selectedEntity.taskId === task.id }"
             @click="selectTask(project.id, task.id)"
-            @contextmenu="openTaskMenu($event, project.id, task)"
+            @contextmenu.stop="openTaskMenu($event, project.id, task)"
           >
             <span class="tree-indent"></span>
             <span class="task-marker"></span>

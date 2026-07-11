@@ -107,7 +107,7 @@ const {
           @click="selectedProjectId !== null && selectTask(selectedProjectId, task.id)"
           @keydown.enter="selectedProjectId !== null && selectTask(selectedProjectId, task.id)"
           @keydown.space.prevent="selectedProjectId !== null && selectTask(selectedProjectId, task.id)"
-          @contextmenu="selectedProjectId !== null && openTaskMenu($event, selectedProjectId, task)"
+          @contextmenu.stop="selectedProjectId !== null && openTaskMenu($event, selectedProjectId, task)"
           @dragstart.stop="startTaskDrag($event, task)"
           @dragend="finishTaskDrag"
         >

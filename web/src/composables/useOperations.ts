@@ -697,8 +697,6 @@ export function useOperations(user: Ref<User | null>, notifier: NotifierControll
 
   function openTaskMenu(event: MouseEvent, projectId: number, task: OperationItem) {
     event.preventDefault()
-    selectedProjectId.value = projectId
-    selectedEntity.value = { type: 'task', projectId, taskId: task.id }
     contextMenu.value = { type: 'task', x: event.clientX, y: event.clientY, projectId, itemId: task.id, name: task.name, subProjectName: task.subProject }
   }
 
