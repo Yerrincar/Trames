@@ -20,13 +20,7 @@ type Config struct {
 }
 
 func LoadConfig(l *Logger) (*Config, error) {
-	err := godotenv.Load(".env")
-	if err != nil {
-		l.Fatal("Error trying to Load .env: "+err.Error(), nil)
-	}
-	if err != nil {
-		l.Fatal("Error trying to Read DB_MAX_IDLE_CONNS from .env %v"+err.Error(), nil)
-	}
+	_ = godotenv.Load(".env")
 	var cfg Config
 
 	addr := os.Getenv("TRAMES_ADDR")
