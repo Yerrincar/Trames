@@ -29,8 +29,10 @@ go.work.sum
 # env file
 .env
 *trames.env
+trames.db
 *.db
-
+*.db-shm
+*.db-wal
 # Editor/IDE
 # .idea/
 # .vscode/
